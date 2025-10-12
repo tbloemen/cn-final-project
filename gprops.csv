@@ -1,0 +1,7 @@
+# prop_name, value
+name,escorts
+description,"A bipartite network of escort and individuals who buy sex from them in Brazil, extracted from a Brazilian online community for such ratings. Edges represent a purchase of sexual intercourse with an escort, and the edge weight gives the buyer's rating of the escort: -1 (bad), 0 (neutral), or +1 (good). Other edge attributes are available. Edges are timestamped.[^icon]
+[^icon]: Description obtained from the [ICON](https://icon.colorado.edu) project."
+citation,"['L. Rocha, F. Liljeros, & P. Holme. \"Simulated epidemics in an empirical spatiotemporal network of 50,185 sexual contacts.\" PLoS Comput Biol, 7(3). (2011)., http://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1001109']"
+url,https://doi.org/10.1371/journal.pcbi.1001109
+tags,"['Social', 'Public Health', 'Weighted', 'Timestamps']"
