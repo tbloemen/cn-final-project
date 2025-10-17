@@ -25,8 +25,9 @@ def main():
     plt.xlabel("Time")
     plt.ylabel("Number of active edges")
     plt.title("Network Activity Over Time")
-    plt.show()
     plt.savefig("network_activity.png")
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
