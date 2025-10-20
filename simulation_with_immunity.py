@@ -105,6 +105,7 @@ def main():
     decayrates = [0.990]
     infected_fraction=[]
     average_immunity=[]
+    sim = None
     for i in range(len(decayrates)):
         sim = simulate_SIS(g, max_steps=1000, start=1000, use_immunity=True, immunity_decay=decayrates[i])
         infected_fraction.append(sim[0])
@@ -115,7 +116,7 @@ def main():
     plt.xlabel("Time")
     plt.ylabel("Fraction infected")
     plt.title("Temporal SIS epidemic simulation (undirected) with immunity")
-    plt.savefig("temporal_sis_simulation_with_time_window.png")
+    plt.savefig("plots/temporal_sis_simulation_with_time_window.png")
     plt.show()
     print(average_immunity, infected_fraction)
     time = np.arange(0, 1001)
