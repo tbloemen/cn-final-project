@@ -92,7 +92,7 @@ def main():
     plt.xlabel("Time")
     plt.ylabel("Fraction infected")
     plt.title("Temporal SIS epidemic simulation (undirected)")
-    plt.savefig("temporal_sis_simulation_with_time_window.png")
+    plt.savefig("plots/temporal_sis_simulation_with_time_window.png")
     plt.show()
 
 

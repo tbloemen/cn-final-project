@@ -25,7 +25,7 @@ def main():
     plt.xlabel("Time")
     plt.ylabel("Number of active edges")
     plt.title("Network Activity Over Time")
-    plt.savefig("network_activity.png")
+    plt.savefig("plots/network_activity.png")
     plt.show()
 
 

@@ -144,7 +144,7 @@ def main():
     ax1.legend(lines + lines2, labels + labels2, loc="center right")
 
     plt.title("Infected Fraction and Effective Beta (beta * (1 - avg(immunity))")
-    plt.savefig("infected_fraction_and_beta.png")
+    plt.savefig("plots/infected_fraction_and_beta.png")
     plt.tight_layout()
     plt.show()
 
