@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 def simulate_SIS(
     g: gt.Graph, start_infection_rate=0.1, days_infected=100, max_steps=None, beta=0.9, start=0
 ):
+    """Simulates SIS epidemic with infections starting at time `start` and infecting for `days_infected` days."""
     edge_time = g.edge_properties["time"]
     max_time = int(max(edge_time[e] for e in g.edges()))
     if max_steps is not None:
@@ -21,23 +22,27 @@ def simulate_SIS(
             active_vertices.add(e.source())
             active_vertices.add(e.target())
 
-    # 0: susceptible, 1: infected, 2: initially infected
+    # 0: susceptible, 1: infected
     state = g.new_vertex_property("int")
+    cumulative_infected = g.new_vertex_property("int")
     last_infected = g.new_vertex_property("int")
     activated = g.new_vertex_property("bool")
 
     for v in g.vertices():
         if v in active_vertices and random.random() < start_infection_rate:
-            state[v] = 2
+            state[v] = 1
             last_infected[v] = start
             activated[v] = False
+            cumulative_infected[v] = 1
         else:
             state[v] = 0
             last_infected[v] = -days_infected
             activated[v] = True
+            cumulative_infected[v] = 0
 
     infected_fraction = []
-    for t in trange(start, max_time + 1):
+    range = trange(start, max_time + 1)
+    for t in range:
         active_edges = [e for e in g.edges() if edge_time[e] == t]
 
         # print(active_edges)
@@ -62,11 +67,13 @@ def simulate_SIS(
                 if random.random() < beta:
                     # print(f"Infection from {u} to {v} at time {t}")
                     new_state[v] = 1
+                    cumulative_infected[v] += 1
                     last_infected[v] = t
             elif state[v] > 0 and state[u] == 0:
                 if random.random() < beta:
                     # print(f"Infection from {v} to {u} at time {t}")
                     new_state[u] = 1
+                    cumulative_infected[u] += 1
                     last_infected[u] = t
 
         state = new_state
@@ -74,9 +81,14 @@ def simulate_SIS(
             frac = np.mean([(1 if state[v] > 0 else 0) for v in active_vertices])
         else:
             frac = 0
-        print(frac)
+        range.set_postfix({"Infected fraction": frac})
         infected_fraction.append(frac)
-    return infected_fraction
+    # Link to cumulative infected property for further analysis
+    g.vertex_properties["cumulative_infected"] = cumulative_infected
+
+
+
+    return infected_fraction, g
 
 
 def main():
@@ -86,7 +98,7 @@ def main():
     print(g)
     print(g.edge_properties)
     print(g.vertex_properties)
-    sim = simulate_SIS(g, max_steps=1000, start=1000)
+    sim, g = simulate_SIS(g, max_steps=100, start=1000)
 
     plt.plot(sim)
     plt.xlabel("Time")
