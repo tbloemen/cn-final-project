@@ -4,10 +4,16 @@ from rich import print
 import random
 from tqdm import trange
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def simulate_SIS(
-    g: gt.Graph, start_infection_rate=0.1, days_infected=100, max_steps=None, beta=0.9, start=0
+    g: gt.Graph,
+    start_infection_rate=0.1,
+    days_infected=100,
+    max_steps=None,
+    beta=0.9,
+    start=0,
 ):
     """Simulates SIS epidemic with infections starting at time `start` and infecting for `days_infected` days."""
     edge_time = g.edge_properties["time"]
@@ -55,7 +61,6 @@ def simulate_SIS(
             activated[u] = True
             activated[v] = True
 
-
         for v in g.vertices():
             if state[v] > 0 and activated[v]:
                 # Recovery step
@@ -86,18 +91,51 @@ def simulate_SIS(
     # Link to cumulative infected property for further analysis
     g.vertex_properties["cumulative_infected"] = cumulative_infected
 
-
-
     return infected_fraction, g
+
+
+def make_node_feature_df(g: gt.Graph):
+    """
+    Create a DataFrame with per-node features combining
+    cumulative infections and standard centrality metrics.
+    """
+    # Ensure the property exists
+    if "cumulative_infected" not in g.vertex_properties:
+        raise ValueError("Graph must have a 'cumulative_infected' vertex property.")
+
+    cumulative_infected = g.vertex_properties["cumulative_infected"]
+
+    # Compute metrics
+    print("Computing centrality metrics...")
+    deg = g.degree_property_map("total").a
+    print("Computed degree")
+    # bet = gt.betweenness(g)[0].a
+    # print("Computed betweenness")
+    closeness = gt.closeness(g).a
+    print("Computed closeness")
+    # eigen = gt.eigenvector(g)[1].a
+    # print("Computed eigenvector")
+
+    # Build dataframe
+    df = pd.DataFrame(
+        {
+            "node": [int(v) for v in g.vertices()],
+            "degree": deg,
+            # "betweenness": bet,
+            "closeness": closeness,
+            # "eigenvector": eigen,
+            "cumulative_infected": [cumulative_infected[v] for v in g.vertices()],
+        }
+    )
+
+    return df
 
 
 def main():
     random.seed(42)
     print("Hello from cn-final-project!")
     g = gt.collection.ns["escorts"]
-    print(g)
-    print(g.edge_properties)
-    print(g.vertex_properties)
+
     sim, g = simulate_SIS(g, max_steps=100, start=1000)
 
     plt.plot(sim)
@@ -105,7 +143,10 @@ def main():
     plt.ylabel("Fraction infected")
     plt.title("Temporal SIS epidemic simulation (undirected)")
     plt.savefig("plots/temporal_sis_simulation_with_time_window.png")
-    plt.show()
+    # plt.show()
+
+    df = make_node_feature_df(g)
+    print(df.head())
 
 
 if __name__ == "__main__":

@@ -7,7 +7,14 @@ import matplotlib.pyplot as plt
 
 
 def simulate_SIS(
-    g: gt.Graph, start_infection_rate=0.1, days_infected=100, max_steps=None, beta=1, start=0, use_immunity=False, immunity_decay=0.99894394847883
+    g: gt.Graph,
+    start_infection_rate=0.1,
+    days_infected=100,
+    max_steps=None,
+    beta=1,
+    start=0,
+    use_immunity=False,
+    immunity_decay=0.99894394847883,
 ):
     edge_time = g.edge_properties["time"]
     max_time = int(max(edge_time[e] for e in g.edges()))
@@ -56,7 +63,6 @@ def simulate_SIS(
             activated[u] = True
             activated[v] = True
 
-
         for v in g.vertices():
             # immunity decays by 68% in 1 year
             immunity[v] = immunity[v] * immunity_decay
@@ -67,7 +73,7 @@ def simulate_SIS(
         for e in active_edges:
             u, v = e.source(), e.target()
             if state[u] > 0 and state[v] == 0:
-                if random.random() < beta * (1-immunity[v] * int(use_immunity)):
+                if random.random() < beta * (1 - immunity[v] * int(use_immunity)):
                     # print(f"Infection from {u} to {v} at time {t}")
                     new_state[v] = 1
                     immunity[v] = 1
@@ -75,7 +81,7 @@ def simulate_SIS(
                     ever_infected[v] = 1
                     num_infected += 1
             elif state[v] > 0 and state[u] == 0:
-                if random.random() < beta * (1-immunity[v] * int(use_immunity)):
+                if random.random() < beta * (1 - immunity[v] * int(use_immunity)):
                     # print(f"Infection from {v} to {u} at time {t}")
                     new_state[u] = 1
                     immunity[u] = 1
@@ -89,7 +95,9 @@ def simulate_SIS(
         else:
             frac = 0
         print(frac)
-        average_immunity.append(beta * (1 - np.mean([immunity[v] for v in g.vertices()])))
+        average_immunity.append(
+            beta * (1 - np.mean([immunity[v] for v in g.vertices()]))
+        )
         infected_fraction.append(frac)
         print("Fraction of nodes ever infected:" + str(np.mean(ever_infected)))
     return infected_fraction, average_immunity
@@ -103,11 +111,17 @@ def main():
     print(g.edge_properties)
     print(g.vertex_properties)
     decayrates = [0.990]
-    infected_fraction=[]
-    average_immunity=[]
+    infected_fraction = []
+    average_immunity = []
     sim = None
     for i in range(len(decayrates)):
-        sim = simulate_SIS(g, max_steps=1000, start=1000, use_immunity=True, immunity_decay=decayrates[i])
+        sim = simulate_SIS(
+            g,
+            max_steps=1000,
+            start=1000,
+            use_immunity=True,
+            immunity_decay=decayrates[i],
+        )
         infected_fraction.append(sim[0])
         average_immunity.append(sim[1])
         sim = sim[0]
@@ -135,7 +149,12 @@ def main():
     ax2 = ax1.twinx()
     for i in range(len(infected_fraction)):
         decay = decayrates[i]
-        ax2.plot(time, average_immunity[i], linestyle="--", label=f"Effective beta (decay={decay})")
+        ax2.plot(
+            time,
+            average_immunity[i],
+            linestyle="--",
+            label=f"Effective beta (decay={decay})",
+        )
 
     ax2.set_ylabel("Average immunity")
 
