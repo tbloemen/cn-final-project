@@ -101,7 +101,6 @@ def simulate_SIS(
         sorted_vertices = sorted(
             metric_values.items(), key=lambda item: item[1], reverse=True
         )
-        print(sorted_vertices[:num_to_vaccinate])
         for v, _ in sorted_vertices[:num_to_vaccinate]:
             state[v] = 0  # Ensure vaccinated nodes start as susceptible
             last_infected[v] = -days_infected
@@ -159,6 +158,8 @@ def simulate_SIS(
         infected_fraction.append(frac)
     # Link to cumulative infected property for further analysis
     g.vertex_properties["cumulative_infected"] = cumulative_infected
+    g.vertex_properties["strength"] = strength
+    g.vertex_properties["leverage"] = leverage
 
     return infected_fraction, g
 
@@ -205,7 +206,7 @@ def main():
     print("Hello from cn-final-project!")
     g = gt.collection.ns["escorts"]
 
-    sim, g = simulate_SIS(g, max_steps=100, start=1000, vaccine_strategy=VaccinationStrategy.BETWEENNESS, vaccine_fraction=0.0)
+    sim, g = simulate_SIS(g, max_steps=1000, start=1000, vaccine_strategy=VaccinationStrategy.DEGREE, vaccine_fraction=0.1)
 
     plt.plot(sim)
     plt.xlabel("Time")
