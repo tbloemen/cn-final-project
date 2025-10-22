@@ -133,7 +133,7 @@ def make_node_feature_df(g: gt.Graph):
     print("Computing centrality metrics...")
     deg = g.degree_property_map("total").a
     print("Computed degree")
-    lev = leverage(g).a
+    lev = leverage(g, deg).a
     print("Computed leverage")
     bet = gt.betweenness(g)[0].a
     print("Computed betweenness")
