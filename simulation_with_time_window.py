@@ -1,3 +1,5 @@
+from unittest import case
+from matplotlib.pylab import Enum
 import numpy as np
 import graph_tool.all as gt
 from rich import print
@@ -7,13 +9,24 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
+class VaccinationStrategy(Enum):
+    DEGREE = 1
+    LEVERAGE = 2
+    STRENGTH = 3
+    BETWEENNESS = 4
+    BETWEENNESS_TIME = 5
+    WTS = 6
+
+
 def simulate_SIS(
     g: gt.Graph,
-    start_infection_rate=0.1,
-    days_infected=100,
-    max_steps=None,
-    beta=0.9,
-    start=0,
+    start_infection_rate: float = 0.1,
+    days_infected: int = 100,
+    max_steps: int | None = None,
+    beta: float = 0.9,
+    start: int = 0,
+    vaccine_strategy: VaccinationStrategy = None,
+    vaccine_fraction: float = 0.1,
 ):
     """Simulates SIS epidemic with infections starting at time `start` and infecting for `days_infected` days."""
     edge_time = g.edge_properties["time"]
@@ -21,6 +34,26 @@ def simulate_SIS(
     if max_steps is not None:
         max_time = min(max_time, max_steps + start)
 
+    # Compute strength based on ratings
+    strength = g.new_vertex_property("float")
+    ratings = g.edge_properties["rating"]
+    for e in g.edges():
+        src, trt = e.source(), e.target()
+        strength[src] += ratings[e]
+        strength[trt] += ratings[e]
+    
+    print(strength.get_array())
+
+    leverage = g.new_vertex_property("float")
+    for v in g.vertices():
+        deg = v.out_degree() + v.in_degree() 
+        if deg > 1:
+            degree_sum = sum(
+                ((deg - (u.out_degree() + u.in_degree())) / (deg + (u.out_degree() + u.in_degree()))) for u in v.all_neighbors()
+            )
+            leverage[v] = degree_sum / deg
+        else:
+            leverage[v] = 0.0
     active_vertices = set()
     for e in g.edges():
         t = edge_time[e]
@@ -42,9 +75,44 @@ def simulate_SIS(
             cumulative_infected[v] = 1
         else:
             state[v] = 0
-            last_infected[v] = -days_infected
+            last_infected[v] = -days_infected  # So they can be infected immediately
             activated[v] = True
             cumulative_infected[v] = 0
+
+    # Apply vaccination strategy
+    metric_values = {}
+
+    match vaccine_strategy:
+        case VaccinationStrategy.DEGREE:
+            degree = g.degree_property_map("total")
+            metric_values = {v: degree[v] for v in g.vertices()}
+        case VaccinationStrategy.STRENGTH:
+            metric_values = {v: strength[v] for v in g.vertices()}
+        case VaccinationStrategy.BETWEENNESS:
+            betweenness = gt.betweenness(g)[0]
+            metric_values = {v: betweenness[v] for v in g.vertices()}
+        case VaccinationStrategy.LEVERAGE:
+            metric_values = {v: leverage[v] for v in g.vertices()}
+        case _:
+            metric_values = {}
+
+    if metric_values:
+        num_to_vaccinate = int(len(active_vertices) * vaccine_fraction)
+        sorted_vertices = sorted(
+            metric_values.items(), key=lambda item: item[1], reverse=True
+        )
+        print(sorted_vertices[:num_to_vaccinate])
+        for v, _ in sorted_vertices[:num_to_vaccinate]:
+            state[v] = 0  # Ensure vaccinated nodes start as susceptible
+            last_infected[v] = -days_infected
+            activated[v] = True  # Vaccinated nodes are always activated
+
+    counter = 0
+    for v in g.vertices():
+        if state[v] == 1:
+            counter += 1
+    
+    print(f"fraction infected at start: {counter/len(active_vertices)}")
 
     infected_fraction = []
     range = trange(start, max_time + 1)
@@ -56,6 +124,7 @@ def simulate_SIS(
         for v in g.vertices():
             new_state[v] = state[v]
 
+        # Mark activated nodes
         for e in active_edges:
             u, v = e.source(), e.target()
             activated[u] = True
@@ -109,7 +178,7 @@ def make_node_feature_df(g: gt.Graph):
     print("Computing centrality metrics...")
     deg = g.degree_property_map("total").a
     print("Computed degree")
-    # bet = gt.betweenness(g)[0].a
+    bet = gt.betweenness(g)[0].a
     # print("Computed betweenness")
     closeness = gt.closeness(g).a
     print("Computed closeness")
@@ -121,7 +190,7 @@ def make_node_feature_df(g: gt.Graph):
         {
             "node": [int(v) for v in g.vertices()],
             "degree": deg,
-            # "betweenness": bet,
+            "betweenness": bet,
             "closeness": closeness,
             # "eigenvector": eigen,
             "cumulative_infected": [cumulative_infected[v] for v in g.vertices()],
@@ -136,7 +205,7 @@ def main():
     print("Hello from cn-final-project!")
     g = gt.collection.ns["escorts"]
 
-    sim, g = simulate_SIS(g, max_steps=100, start=1000)
+    sim, g = simulate_SIS(g, max_steps=100, start=1000, vaccine_strategy=VaccinationStrategy.BETWEENNESS, vaccine_fraction=0.0)
 
     plt.plot(sim)
     plt.xlabel("Time")
@@ -146,7 +215,7 @@ def main():
     # plt.show()
 
     df = make_node_feature_df(g)
-    print(df.head())
+    print((df.sort_values("degree", ascending=False)).head(20))
 
 
 if __name__ == "__main__":
