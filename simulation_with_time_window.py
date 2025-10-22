@@ -93,6 +93,30 @@ def simulate_SIS(
 
     return infected_fraction, g
 
+def leverage(g: gt.Graph, deg):
+    """
+    Unweighted leverage centrality for all vertices. Assumes g is undirected.
+    """
+    # deg_pm = g.degree_property_map("total")
+    # deg_arr = deg_pm.a
+
+    L = g.new_vertex_property("double")
+
+    for v in g.vertices():
+        i = int(v)
+        ki = deg[i]
+        if ki == 0:
+            L[v] = 0.0
+            continue
+        s = 0.0
+        for u in v.out_neighbors():
+            kj = deg[int(u)]
+            denom = ki + kj
+            if denom != 0:
+                s += (ki - kj) / denom
+        L[v] = s / ki
+
+    return L
 
 def make_node_feature_df(g: gt.Graph):
     """
@@ -109,20 +133,24 @@ def make_node_feature_df(g: gt.Graph):
     print("Computing centrality metrics...")
     deg = g.degree_property_map("total").a
     print("Computed degree")
-    # bet = gt.betweenness(g)[0].a
-    # print("Computed betweenness")
-    closeness = gt.closeness(g).a
-    print("Computed closeness")
+    lev = leverage(g).a
+    print("Computed leverage")
+    bet = gt.betweenness(g)[0].a
+    print("Computed betweenness")
+    # closeness = gt.closeness(g).a
+    # print("Computed closeness")
     # eigen = gt.eigenvector(g)[1].a
     # print("Computed eigenvector")
+
 
     # Build dataframe
     df = pd.DataFrame(
         {
             "node": [int(v) for v in g.vertices()],
             "degree": deg,
-            # "betweenness": bet,
-            "closeness": closeness,
+            "leverage": lev,
+            "betweenness": bet,
+            # "closeness": closeness,
             # "eigenvector": eigen,
             "cumulative_infected": [cumulative_infected[v] for v in g.vertices()],
         }
