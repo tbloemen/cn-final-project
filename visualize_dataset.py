@@ -1,9 +1,8 @@
-import numpy as np
 import graph_tool.all as gt
 from rich import print
-import random
 from tqdm import trange
 import matplotlib.pyplot as plt
+
 
 def activity_over_time(g: gt.Graph):
     edge_time = g.edge_properties["time"]
@@ -31,3 +30,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
