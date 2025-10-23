@@ -1,0 +1,2 @@
+Average time-respecting path length: 11.979020921309276
+Average shortest time-respecting path time: 1774.6892420725817
