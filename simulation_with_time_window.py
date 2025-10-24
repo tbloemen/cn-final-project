@@ -55,8 +55,9 @@ def simulate_SIS(
         strength[src] += ratings[e]
         strength[trt] += ratings[e]
     
-    print(strength.get_array())
+    # print(strength.get_array())
 
+    # Compute leverage
     leverage = g.new_vertex_property("float")
     for v in g.vertices():
         deg = v.out_degree() + v.in_degree() 
@@ -67,6 +68,8 @@ def simulate_SIS(
             leverage[v] = degree_sum / deg
         else:
             leverage[v] = 0.0
+
+    # Gather all vertices that are active during time window        
     active_vertices = set()
     for e in g.edges():
         t = edge_time[e]
@@ -74,23 +77,13 @@ def simulate_SIS(
             active_vertices.add(e.source())
             active_vertices.add(e.target())
 
-    # 0: susceptible, 1: infected
-    state = g.new_vertex_property("int")
-    cumulative_infected = g.new_vertex_property("int")
-    last_infected = g.new_vertex_property("int")
-    activated = g.new_vertex_property("bool")
-
-    for v in g.vertices():
-        if v in active_vertices and random.random() < start_infection_rate:
-            state[v] = 1
-            last_infected[v] = start
-            activated[v] = False
-            cumulative_infected[v] = 1
-        else:
-            state[v] = 0
-            last_infected[v] = -days_infected  # So they can be infected immediately
-            activated[v] = True
-            cumulative_infected[v] = 0
+    # Create vertex properties for simulation
+    state = g.new_vertex_property("int")                   # 0: susceptible, 1: infected
+    cumulative_infected = g.new_vertex_property("int")     # number of times the vertex has been infected: >= 0
+    last_infected = g.new_vertex_property("int")           # timestep at which the vertex has last been infected
+    activated = g.new_vertex_property("bool")              # not completely sure what this property does
+    vaccinated = g.new_vertex_property("bool")             # whether the vertex has been vaccinated or not
+    
 
     # Apply vaccination strategy
     metric_values = {}
@@ -111,21 +104,52 @@ def simulate_SIS(
 
     if metric_values:
         num_to_vaccinate = int(len(active_vertices) * vaccine_fraction)
-        sorted_vertices = sorted(
-            metric_values.items(), key=lambda item: item[1], reverse=True
+        ranked_active = sorted(
+            ((v, metric_values[v]) for v in active_vertices),
+            key=lambda item: item[1],
+            reverse=True
         )
-        for v, _ in sorted_vertices[:num_to_vaccinate]:
-            state[v] = 0  # Ensure vaccinated nodes start as susceptible
+        to_vaccinate = [v for v, _ in ranked_active[:num_to_vaccinate]] 
+        for v in to_vaccinate:
+            vaccinated[v] = True
+            state[v] = 0
             last_infected[v] = -days_infected
-            activated[v] = True  # Vaccinated nodes are always activated
+            activated[v] = False     # this flag is unrelated to vaccination; False is fine
+            cumulative_infected[v] = 0
 
+    # infect 10% of the active vertices - only infect unvaccinated vertices
+    num_to_infect = int(len(active_vertices) * start_infection_rate)
+    unvaccinated_active = [v for v in active_vertices if not vaccinated[v]]
+    random.shuffle(unvaccinated_active)
+    to_infect = unvaccinated_active[:num_to_infect]  
+    for v in to_infect:
+        state[v] = 1
+        last_infected[v] = start
+        cumulative_infected[v] = 1
+        activated[v] = False
+
+    # initialize the rest of *active* unvaccinated to clean susceptible
+    for v in set(unvaccinated_active) - set(to_infect):
+        state[v] = 0
+        last_infected[v] = -days_infected
+        cumulative_infected[v] = 0
+        activated[v] = True
+
+    # print fraction of vaccinated at start
+    counter = 0
+    for v in g.vertices():
+        if vaccinated[v] == True:
+            counter += 1
+    print(f"fraction vaccinated at start: {counter/len(active_vertices)}")
+
+    # print faction of infected at start
     counter = 0
     for v in g.vertices():
         if state[v] == 1:
             counter += 1
-    
     print(f"fraction infected at start: {counter/len(active_vertices)}")
 
+    # from here we start running the actual simulation
     infected_fraction = []
     range = trange(start, max_time + 1)
     for t in range:
@@ -149,13 +173,13 @@ def simulate_SIS(
 
         for e in active_edges:
             u, v = e.source(), e.target()
-            if state[u] > 0 and state[v] == 0:
+            if state[u] > 0 and state[v] == 0 and not vaccinated[v]:
                 if random.random() < beta:
                     # print(f"Infection from {u} to {v} at time {t}")
                     new_state[v] = 1
                     cumulative_infected[v] += 1
                     last_infected[v] = t
-            elif state[v] > 0 and state[u] == 0:
+            elif state[v] > 0 and state[u] == 0 and not vaccinated[u]:
                 if random.random() < beta:
                     # print(f"Infection from {v} to {u} at time {t}")
                     new_state[u] = 1
@@ -169,7 +193,8 @@ def simulate_SIS(
             frac = 0
         range.set_postfix({"Infected fraction": frac})
         infected_fraction.append(frac)
-    # Link to cumulative infected property for further analysis
+
+    # Add cumulative_infected, strength and leverage to vertex properties
     g.vertex_properties["cumulative_infected"] = cumulative_infected
     g.vertex_properties["strength"] = strength
     g.vertex_properties["leverage"] = leverage
@@ -216,7 +241,8 @@ def make_node_feature_df(g: gt.Graph):
     print("Computing centrality metrics...")
     deg = g.degree_property_map("total").a
     print("Computed degree")
-    lev = leverage(g, deg).a
+    # lev = leverage(g, deg).a
+    lev = g.vertex_properties["leverage"]
     print("Computed leverage")
     bet = gt.betweenness(g)[0].a
     print("Computed betweenness")
