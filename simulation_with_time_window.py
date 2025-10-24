@@ -7,7 +7,20 @@ import random
 from tqdm import trange
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
+SEEDS: list[int] = [
+    94436110,
+    45527262,
+    46019711,
+    3836817,
+    66875855,
+    67067660,
+    44576945,
+    12023309,
+    85269182,
+    43678282
+]
 
 class VaccinationStrategy(Enum):
     DEGREE = 1
@@ -230,20 +243,43 @@ def make_node_feature_df(g: gt.Graph):
 
 
 def main():
-    random.seed(42)
     print("Hello from cn-final-project!")
-    g = gt.collection.ns["escorts"]
+    g_escorts = gt.collection.ns["escorts"]
+    results: list[tuple] = []
 
-    sim, g = simulate_SIS(g, max_steps=1000, start=1000, vaccine_strategy=VaccinationStrategy.DEGREE, vaccine_fraction=0.1)
+    EXPERIMENT_NAME: str = 'temporal-sis-simulation'
 
-    plt.plot(sim)
+    print(f'Starting {EXPERIMENT_NAME}')
+    # we are going to run this simulation `len(SEEDS)` times, ensuring the same seeds each time project is ran
+    for index, seed in enumerate(SEEDS):
+        print(f'Starting computing iteration {index+1}, with seed: {seed}')
+        random.seed(seed)
+
+        sim, g = simulate_SIS(g_escorts, max_steps=1000, start=1000, vaccine_strategy=VaccinationStrategy.DEGREE, vaccine_fraction=0.1)
+
+        # saving to cache, can be loaded using `np.load` and `gt.load`
+        print('Saving to cache...')
+        DIR_NAME=f'./cache/{EXPERIMENT_NAME}'
+        os.makedirs(DIR_NAME, exist_ok=True)
+        g.save(f'{DIR_NAME}/{index}.gt')
+        np.save(f'{DIR_NAME}/{index}.npy', sim, allow_pickle=False)
+
+        results.append((sim, g))
+
+    # plotting the different runs:
+    for iteration,(sim,g) in enumerate(results):
+        # df = make_node_feature_df(g)
+        plt.plot(sim, label=f'run {iteration+1}')
+
+    plt.legend()
     plt.xlabel("Time")
     plt.ylabel("Fraction infected")
     plt.title("Temporal SIS epidemic simulation (undirected)")
-    plt.savefig("plots/temporal_sis_simulation_with_time_window.png")
+    plt.savefig("plots/temporal_sis_simulation_with_time_window-1.png")
     # plt.show()
 
-    df = make_node_feature_df(g)
+    # not sure what this was for
+    df = make_node_feature_df(results[0][1])
     print((df.sort_values("degree", ascending=False)).head(20))
 
 
