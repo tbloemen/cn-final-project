@@ -5,6 +5,8 @@ import random
 from tqdm import trange
 import matplotlib.pyplot as plt
 import pandas as pd
+from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9+
 from simulation_with_time_window import simulate_SIS, make_node_feature_df, VaccinationStrategy
 
 
@@ -98,15 +100,110 @@ def vertices_to_vaccinate_per_strategy(
     d[VaccinationStrategy(4)] = make_list_to_vaccinate(num_to_vaccinate, metric_values)
     print("betweenness compuation done")
 
-    return d
+    return d, active_vertices
+
+from pathlib import Path
+import pandas as pd
+import datetime as dt
+
+def save_vertices_to_cache(
+    d,
+    g,
+    start: int,
+    vaccine_fraction: float,
+    max_steps: int | None,
+    out_dir: str = "cache/vertices-to-vaccinate",
+    stem: str | None = None,
+):
+    """
+    Save dict[VaccinationStrategy, list[(gt.Vertex, float)]] to a csv in repo.
+    Returns the written path.
+    """
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for strat, items in d.items():
+        strat_value = int(strat.value)
+        strat_name = strat.name
+        for v, metric in items:
+            rows.append({
+                "strategy": int(strat_value),
+                "strategy_name": strat_name,
+                "vertex_index": int(g.vertex_index[v]),
+                "metric": float(metric),
+                "start": int(start),
+                "vaccine_fraction": float(vaccine_fraction),
+                "max_steps": -1 if max_steps is None else int(max_steps),
+                "saved_at_utc": dt.datetime.utcnow().isoformat(timespec="seconds"),
+            })
+
+    df = pd.DataFrame(rows)
+
+    # filename with parameters for easy reuse; feel free to adjust
+    if stem is None:
+        ms = "None" if max_steps is None else str(max_steps)
+        now_ams = datetime.now(ZoneInfo("Europe/Amsterdam"))
+        ts = now_ams.strftime("%Y-%m-%d_%Hh%Mm%Ss")         # e.g. 2025-10-25_11h55m12s
+        stem = f"start={start}_frac={vaccine_fraction}_max={ms}_{ts}"
+
+    path_parquet = out / f"{stem}.parquet"
+    try:
+        df.to_parquet(path_parquet, index=False)  # requires pyarrow or fastparquet
+        return path_parquet
+    except Exception:
+        # fallback to CSV if parquet isn’t available
+        path_csv = out / f"{stem}.csv"
+        df.to_csv(path_csv, index=False)
+        return path_csv
+
+
+def load_vertices_from_cache(g, path):
+    """
+    Load cache file and reconstruct dict[VaccinationStrategy, list[(gt.Vertex, float)]].
+    File is saved in the folder cache/vertices-to-vaccinate. 
+    So just use "cache/vertices-to-vaccinate/filename" as path.
+    """
+    if str(path).endswith(".parquet"):
+        df = pd.read_parquet(path)
+    else:
+        df = pd.read_csv(path)
+
+    out = {}
+    for _, row in df.iterrows():
+        vs = VaccinationStrategy(int(row["strategy"]))
+        v = g.vertex(int(row["vertex_index"]))
+        out.setdefault(vs, []).append((v, float(row["metric"])))
+    return out
+
 
 def main():
-    d = vertices_to_vaccinate_per_strategy(
-        g = gt.collection.ns["escorts"],
-        start = 1000,
-        vaccine_fraction = 0.1,
-        max_steps = None
-    )
+    """ See code below for an example how to compute and save and/or load the vertices to vaccinate"""
+    
+    print("Hello from get_vertices_to_vaccinate.py!")
+    # d, active_vertices  = vertices_to_vaccinate_per_strategy(
+    #     g = gt.collection.ns["escorts"],
+    #     start = 1000,
+    #     vaccine_fraction = 0.1,
+    #     max_steps = None
+    # )
+
+    # path = save_vertices_to_cache(
+    #     d, g=gt.collection.ns["escorts"], start=1000, vaccine_fraction=0.1, max_steps=None
+    # )
+
+    # print(f"Saved cache to {path}")
+
+    # later (or in a new session), load:
+    filename = "start=1000_frac=0.1_max=None_2025-10-25_12h12m30s.csv"
+    path = "cache/vertices-to-vaccinate/" + filename
+    d2 = load_vertices_from_cache(gt.collection.ns["escorts"], path)
+
+    for i in range(1, 5):
+        vs = VaccinationStrategy(i)
+        print(vs)
+        print(d2[vs][:5])
+        print("-------------------------------------------------------")
 
 if __name__ == "__main__":
     main()
