@@ -100,6 +100,18 @@ def vertices_to_vaccinate_per_strategy(
     d[VaccinationStrategy(4)] = make_list_to_vaccinate(num_to_vaccinate, metric_values)
     print("betweenness compuation done")
 
+
+    # add time-respecting BETWEENNESS vertices to vaccinate
+    tr_betweenness_df = pd.read_csv("time_respecting_betweenness.csv")
+    tr_betweenness_dict = dict(zip(tr_betweenness_df["node"], tr_betweenness_df["betweenness"]))
+    metric_values = {}
+    for v in g.vertices():
+        idx = int(g.vertex_index[v])
+        metric_values[v] = tr_betweenness_dict.get(idx, 0.0)
+        
+    d[VaccinationStrategy(5)] = make_list_to_vaccinate(num_to_vaccinate, metric_values)
+    print("time-respecting betweenness compuation done")
+
     return d, active_vertices
 
 from pathlib import Path
@@ -195,11 +207,11 @@ def main():
     # print(f"Saved cache to {path}")
 
     # later (or in a new session), load:
-    filename = "start=1000_frac=0.1_max=None_2025-10-25_12h12m30s.csv"
+    filename = "start=1000_frac=0.1_max=None_2025-10-26_14h06m14s.csv"
     path = "cache/vertices-to-vaccinate/" + filename
     d2 = load_vertices_from_cache(gt.collection.ns["escorts"], path)
 
-    for i in range(1, 5):
+    for i in range(1, 6):
         vs = VaccinationStrategy(i)
         print(vs)
         print(d2[vs][:5])
