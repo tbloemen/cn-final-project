@@ -279,7 +279,7 @@ def main():
         "vaccine_strategy":     VaccinationStrategy.DEGREE,
         "vaccine_fraction":     0.1,
     }
-    EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items()) + f"_{datetime.datetime.now().strftime('%d-%m-%yT%H:%M:%S.%f')}"
+    EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items())
 
     print(f'Starting {EXPERIMENT_NAME}')
     # we are going to run this simulation `len(SEEDS)` times, ensuring the same seeds each time project is ran
@@ -308,7 +308,7 @@ def main():
     plt.xlabel("Time")
     plt.ylabel("Fraction infected")
     plt.title("Temporal SIS epidemic simulation (undirected)")
-    plt.savefig("plots/temporal_sis_simulation_with_time_window-1.png")
+    plt.savefig(f"plots/{EXPERIMENT_NAME}.png")
     # plt.show()
 
     # not sure what this was for
