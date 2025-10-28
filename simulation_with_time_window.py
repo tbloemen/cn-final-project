@@ -40,6 +40,7 @@ def simulate_SIS(
     start: int = 0,
     vaccine_strategy: VaccinationStrategy = None,
     vaccine_fraction: float = 0.1,
+    immunity_decay_rate: float = 1.0                # a decay rate of 1.0 means no decay
 ):
     """Simulates SIS epidemic with infections starting at time `start` and infecting for `days_infected` days."""
     edge_time = g.edge_properties["time"]
@@ -82,8 +83,8 @@ def simulate_SIS(
     cumulative_infected = g.new_vertex_property("int")     # number of times the vertex has been infected: >= 0
     last_infected = g.new_vertex_property("int")           # timestep at which the vertex has last been infected
     activated = g.new_vertex_property("bool")              # not completely sure what this property does
-    vaccinated = g.new_vertex_property("bool")             # whether the vertex has been vaccinated or not
-    
+    vaccinated = g.new_vertex_property("bool")             # whether the vertex has been vaccinated or not 
+    immunity = g.new_vertex_property("float")               # immunity of node, will decay each t_step by rate
 
     # Apply vaccination strategy
     metric_values = {}
@@ -116,6 +117,7 @@ def simulate_SIS(
             last_infected[v] = -days_infected
             activated[v] = False     # this flag is unrelated to vaccination; False is fine
             cumulative_infected[v] = 0
+            immunity[v] = 1.0
 
     # infect 10% of the active vertices - only infect unvaccinated vertices
     num_to_infect = int(len(active_vertices) * start_infection_rate)
@@ -134,6 +136,10 @@ def simulate_SIS(
         last_infected[v] = -days_infected
         cumulative_infected[v] = 0
         activated[v] = True
+    
+    # we have se the `immunity` of vaccinated to 1, but unvaccinated not yet to 0:
+    for v in set(unvaccinated_active):
+        immunity[v] = 0
 
     # print fraction of vaccinated at start
     counter = 0
@@ -167,22 +173,25 @@ def simulate_SIS(
             activated[v] = True
 
         for v in g.vertices():
+            immunity[v] = immunity[v] * immunity_decay_rate
             if state[v] > 0 and activated[v]:
                 # Recovery step
                 new_state[v] = 0 if t - last_infected[v] >= days_infected else 1
 
         for e in active_edges:
             u, v = e.source(), e.target()
-            if state[u] > 0 and state[v] == 0 and not vaccinated[v]:
-                if random.random() < beta:
+            if state[u] > 0 and state[v] == 0:
+                if random.random() < beta * (1 - immunity[v]):
                     # print(f"Infection from {u} to {v} at time {t}")
                     new_state[v] = 1
+                    immunity[v] = 1
                     cumulative_infected[v] += 1
                     last_infected[v] = t
-            elif state[v] > 0 and state[u] == 0 and not vaccinated[u]:
-                if random.random() < beta:
+            elif state[v] > 0 and state[u] == 0:
+                if random.random() < beta * (1 - immunity[v]):
                     # print(f"Infection from {v} to {u} at time {t}")
                     new_state[u] = 1
+                    immunity[u] = 1
                     cumulative_infected[u] += 1
                     last_infected[u] = t
 
@@ -278,6 +287,7 @@ def main():
         "start":                1000,
         "vaccine_strategy":     VaccinationStrategy.DEGREE,
         "vaccine_fraction":     0.1,
+        "immunity_decay_rate":  0.990
     }
     EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items())
 
