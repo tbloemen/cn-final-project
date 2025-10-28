@@ -273,7 +273,13 @@ def main():
     g_escorts = gt.collection.ns["escorts"]
     results: list[tuple] = []
 
-    EXPERIMENT_NAME: str = 'temporal-sis-simulation'
+    OPTIONS = {
+        "max_steps":            1000,
+        "start":                1000,
+        "vaccine_strategy":     VaccinationStrategy.DEGREE,
+        "vaccine_fraction":     0.1,
+    }
+    EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items()) + f"_{datetime.datetime.now().strftime('%d-%m-%yT%H:%M:%S.%f')}"
 
     print(f'Starting {EXPERIMENT_NAME}')
     # we are going to run this simulation `len(SEEDS)` times, ensuring the same seeds each time project is ran
@@ -281,7 +287,8 @@ def main():
         print(f'Starting computing iteration {index+1}, with seed: {seed}')
         random.seed(seed)
 
-        sim, g = simulate_SIS(g_escorts, max_steps=1000, start=1000, vaccine_strategy=VaccinationStrategy.DEGREE, vaccine_fraction=0.1)
+        sim, g = simulate_SIS(g_escorts, 
+                              **OPTIONS)
 
         # saving to cache, can be loaded using `np.load` and `gt.load`
         print('Saving to cache...')
