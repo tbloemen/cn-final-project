@@ -1,5 +1,5 @@
 from unittest import case
-from matplotlib.pylab import Enum
+from enum import Enum
 import numpy as np
 import graph_tool.all as gt
 from rich import print
@@ -50,11 +50,12 @@ def simulate_SIS(
     # Compute strength based on ratings
     strength = g.new_vertex_property("float")
     ratings = g.edge_properties["rating"]
+    ep_1, ep_2, ep_3 = g.edge_properties["anal"], g.edge_properties["oral"], g.edge_properties["kiss"]
     for e in g.edges():
-        src, trt = e.source(), e.target()
-        strength[src] += ratings[e]
-        strength[trt] += ratings[e]
-    
+        src, trt = e.source(), e.target() 
+        strength[src] += ep_1[e] + ep_2[e] + ep_3[e]
+        strength[trt] += ep_1[e] + ep_2[e] + ep_3[e]
+
     # print(strength.get_array())
 
     # Compute leverage
