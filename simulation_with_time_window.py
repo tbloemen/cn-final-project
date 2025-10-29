@@ -112,7 +112,6 @@ def simulate_SIS(
             metric_values = {v: betweenness[v] for v in g.vertices()}
         case VaccinationStrategy.LEVERAGE:
             metric_values = {v: leverage[v] for v in g.vertices()}
-<<<<<<< Updated upstream
         case VaccinationStrategy.WTS:
             wt = gt.load_graph("node_rankings_time_weighted_activation.gt")
             # Now build your metric_values dict using vertex indices
@@ -125,7 +124,6 @@ def simulate_SIS(
             metric_values = {v: vprop_act[v] for v in g.vertices()}
         case VaccinationStrategy.RANDOM:
             metric_values = {v: random.uniform(0, 1.0) for v in g.vertices()}
-=======
         case VaccinationStrategy.BETWEENNESS_TIME:
             tr_betweenness_df = pd.read_csv("time_respecting_betweenness.csv")
             tr_betweenness_dict = dict(zip(tr_betweenness_df["node"], tr_betweenness_df["betweenness"]))
@@ -133,7 +131,6 @@ def simulate_SIS(
             for v in g.vertices():
                 idx = int(g.vertex_index[v])
                 metric_values[v] = tr_betweenness_dict.get(idx, 0.0)
->>>>>>> Stashed changes
         case _:
             metric_values = {}
 
