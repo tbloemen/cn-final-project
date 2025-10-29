@@ -29,6 +29,7 @@ def compute_betweenness_from_csv(csv_file, output_file="betweenness.csv"):
 
     print(f"Saved betweenness scores to {output_file}")
 
+
 def compute_avg_time_respecting_path_length(csv_file):
     total_length = 0
     path_count = 0
@@ -44,6 +45,7 @@ def compute_avg_time_respecting_path_length(csv_file):
     print(f"Average time-respecting path length: {avg_length}")
     return avg_length
 
+
 def compute_avg_shortest_time(csv_file):
     total_time = 0
     path_count = 0
@@ -58,6 +60,7 @@ def compute_avg_shortest_time(csv_file):
     avg_time = total_time / path_count if path_count > 0 else 0
     print(f"Average shortest time-respecting path time: {avg_time}")
     return avg_time
+
 
 def temporal_shortest_paths_with_paths(g, source, start_time=0):
     time_prop = g.ep["time"]
@@ -108,18 +111,20 @@ def temporal_analysis(g, output_file="temporal_paths.csv"):
         for src in tqdm(vertices):
             T, hops, parent = temporal_shortest_paths_with_paths(g, src)
             for dst in vertices:
-                if src == dst: 
+                if src == dst:
                     continue
                 if np.isfinite(T[int(dst)]):
                     path = reconstruct_path(parent, src, dst)
                     if path:
-                        writer.writerow([
-                            int(src),
-                            int(dst),
-                            T[int(dst)],
-                            hops[int(dst)],
-                            " ".join(map(str, path))
-                        ])
+                        writer.writerow(
+                            [
+                                int(src),
+                                int(dst),
+                                T[int(dst)],
+                                hops[int(dst)],
+                                " ".join(map(str, path)),
+                            ]
+                        )
 
     print(f"Results saved to {output_file}")
 

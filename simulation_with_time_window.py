@@ -19,8 +19,9 @@ SEEDS: list[int] = [
     44576945,
     12023309,
     85269182,
-    43678282
+    43678282,
 ]
+
 
 class VaccinationStrategy(Enum):
     DEGREE = 1
@@ -30,6 +31,7 @@ class VaccinationStrategy(Enum):
     BETWEENNESS_TIME = 5
     WTS = 6
     RANDOM = 7
+
 
 
 def simulate_SIS(
@@ -57,22 +59,26 @@ def simulate_SIS(
         src, trt = e.source(), e.target()
         strength[src] += ratings[e]
         strength[trt] += ratings[e]
-    
+
     # print(strength.get_array())
 
     # Compute leverage
     leverage = g.new_vertex_property("float")
     for v in g.vertices():
-        deg = v.out_degree() + v.in_degree() 
+        deg = v.out_degree() + v.in_degree()
         if deg > 1:
             degree_sum = sum(
-                ((deg - (u.out_degree() + u.in_degree())) / (deg + (u.out_degree() + u.in_degree()))) for u in v.all_neighbors()
+                (
+                    (deg - (u.out_degree() + u.in_degree()))
+                    / (deg + (u.out_degree() + u.in_degree()))
+                )
+                for u in v.all_neighbors()
             )
             leverage[v] = degree_sum / deg
         else:
             leverage[v] = 0.0
 
-    # Gather all vertices that are active during time window        
+    # Gather all vertices that are active during time window
     active_vertices = set()
     for e in g.edges():
         t = edge_time[e]
@@ -118,6 +124,13 @@ def simulate_SIS(
             metric_values = {v: vprop_act[v] for v in g.vertices()}
         case VaccinationStrategy.RANDOM:
             metric_values = {v: random.uniform(0, 1.0) for v in g.vertices()}
+        case VaccinationStrategy.BETWEENNESS_TIME:
+            tr_betweenness_df = pd.read_csv("time_respecting_betweenness.csv")
+            tr_betweenness_dict = dict(zip(tr_betweenness_df["node"], tr_betweenness_df["betweenness"]))
+            metric_values = {}
+            for v in g.vertices():
+                idx = int(g.vertex_index[v])
+                metric_values[v] = tr_betweenness_dict.get(idx, 0.0)
         case _:
             metric_values = {}
 
@@ -126,14 +139,14 @@ def simulate_SIS(
         ranked_active = sorted(
             ((v, metric_values[v]) for v in active_vertices),
             key=lambda item: item[1],
-            reverse=True
+            reverse=True,
         )
-        to_vaccinate = [v for v, _ in ranked_active[:num_to_vaccinate]] 
+        to_vaccinate = [v for v, _ in ranked_active[:num_to_vaccinate]]
         for v in to_vaccinate:
             vaccinated[v] = True
             state[v] = 0
             last_infected[v] = -days_infected
-            activated[v] = False     # this flag is unrelated to vaccination; False is fine
+            activated[v] = False  # this flag is unrelated to vaccination; False is fine
             cumulative_infected[v] = 0
             immunity[v] = 1.0
 
@@ -141,7 +154,7 @@ def simulate_SIS(
     num_to_infect = int(len(active_vertices) * start_infection_rate)
     unvaccinated_active = [v for v in active_vertices if not vaccinated[v]]
     random.shuffle(unvaccinated_active)
-    to_infect = unvaccinated_active[:num_to_infect]  
+    to_infect = unvaccinated_active[:num_to_infect]
     for v in to_infect:
         state[v] = 1
         last_infected[v] = start
@@ -166,14 +179,14 @@ def simulate_SIS(
     for v in g.vertices():
         if vaccinated[v] == True:
             counter += 1
-    print(f"fraction vaccinated at start: {counter/len(active_vertices)}")
+    print(f"fraction vaccinated at start: {counter / len(active_vertices)}")
 
     # print faction of infected at start
     counter = 0
     for v in g.vertices():
         if state[v] == 1:
             counter += 1
-    print(f"fraction infected at start: {counter/len(active_vertices)}")
+    print(f"fraction infected at start: {counter / len(active_vertices)}")
 
     # from here we start running the actual simulation
     range = trange(start, max_time + 1)
@@ -234,6 +247,7 @@ def simulate_SIS(
 
     return infected_fraction, g, num_total_infected_over_time
 
+
 def leverage(g: gt.Graph, deg):
     """
     Unweighted leverage centrality for all vertices. Assumes g is undirected.
@@ -259,6 +273,7 @@ def leverage(g: gt.Graph, deg):
 
     return L
 
+
 def make_node_feature_df(g: gt.Graph):
     """
     Create a DataFrame with per-node features combining
@@ -283,7 +298,6 @@ def make_node_feature_df(g: gt.Graph):
     # print("Computed closeness")
     # eigen = gt.eigenvector(g)[1].a
     # print("Computed eigenvector")
-
 
     # Build dataframe
     df = pd.DataFrame(
@@ -316,18 +330,18 @@ def main():
     }
     EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items())
 
-    print(f'Starting {EXPERIMENT_NAME}')
+    print(f"Starting {EXPERIMENT_NAME}")
     # we are going to run this simulation `len(SEEDS)` times, ensuring the same seeds each time project is ran
     for index, seed in enumerate(SEEDS):
-        print(f'Starting computing iteration {index+1}, with seed: {seed}')
+        print(f"Starting computing iteration {index + 1}, with seed: {seed}")
         random.seed(seed)
 
         sim, g, total_infections_over_time = simulate_SIS(g_escorts, 
                               **OPTIONS)
 
         # saving to cache, can be loaded using `np.load` and `gt.load`
-        print('Saving to cache...')
-        DIR_NAME=f'./cache/{EXPERIMENT_NAME}'
+        print("Saving to cache...")
+        DIR_NAME = f"./cache/{EXPERIMENT_NAME}"
         os.makedirs(DIR_NAME, exist_ok=True)
         g.save(f'{DIR_NAME}/{index}.gt')
         np.save(f'{DIR_NAME}/{index}.npy', sim, allow_pickle=False)
