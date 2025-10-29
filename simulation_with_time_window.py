@@ -345,7 +345,7 @@ def main():
         os.makedirs(DIR_NAME, exist_ok=True)
         g.save(f'{DIR_NAME}/{index}.gt')
         np.save(f'{DIR_NAME}/{index}.npy', sim, allow_pickle=False)
-        np.save(f'{DIR_NAME}/tiot_{index}.npy', sim, allow_pickle=False)
+        np.save(f'{DIR_NAME}/tiot_{index}.npy', total_infections_over_time, allow_pickle=False)
 
         results.append((sim, g, total_infections_over_time))
 
@@ -357,7 +357,7 @@ def main():
     plt.legend()
     plt.xlabel("Time")
     plt.ylabel("Cumulative infected")
-    plt.title("Cumulative Infected over Time, with Random Vaccination Strategy")
+    plt.title(f"Cumulative Infected over Time, with {str(OPTIONS["vaccine_strategy"]).removeprefix("VaccinationStragety.")} Vaccination Strategy")
     plt.savefig(f"plots/cummulative_infected_sis_sim_{EXPERIMENT_NAME}.png")
     # plt.show()
 
