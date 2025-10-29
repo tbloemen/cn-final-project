@@ -286,6 +286,9 @@ def make_node_feature_df(g: gt.Graph):
 
     cumulative_infected = g.vertex_properties["cumulative_infected"]
 
+    all_nodes = [int(v) for v in g.vertices()]
+    all_nodes_df = pd.DataFrame({"node": all_nodes})
+
     # Compute metrics
     print("Computing centrality metrics...")
     deg = g.degree_property_map("total").a
@@ -295,20 +298,30 @@ def make_node_feature_df(g: gt.Graph):
     print("Computed leverage")
     bet = gt.betweenness(g)[0].a
     print("Computed betweenness")
-    # closeness = gt.closeness(g).a
-    # print("Computed closeness")
-    # eigen = gt.eigenvector(g)[1].a
-    # print("Computed eigenvector")
+    strength = g.vertex_properties["strength"]
+    print("Computed strength")
+    betweenness_time_csv = pd.read_csv("time_respecting_betweenness.csv")
+    merged_df = all_nodes_df.merge(betweenness_time_csv, on='node', how='left')
+    merged_df['betweenness'] = merged_df['betweenness'].fillna(0)
+    betweenness_time = merged_df['betweenness'].to_numpy()
+    print("Computed betweenness time")
+    wt = gt.load_graph("node_rankings_time_weighted_activation.gt")
+    vprop_act = wt.vertex_properties[f"weighted_activation_node_4"]
+
+    # for every node that is not in the csv, betweenness is 0.0
+
+
 
     # Build dataframe
     df = pd.DataFrame(
         {
-            "node": [int(v) for v in g.vertices()],
+            "node": all_nodes,
             "degree": deg,
             "leverage": lev,
             "betweenness": bet,
-            # "closeness": closeness,
-            # "eigenvector": eigen,
+            "betweenness_time": betweenness_time,
+            "wts": vprop_act,
+            "strength": strength,
             "cumulative_infected": [cumulative_infected[v] for v in g.vertices()],
         }
     )
