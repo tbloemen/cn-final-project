@@ -31,7 +31,7 @@ class VaccinationStrategy(Enum):
     BETWEENNESS_TIME = 5
     WTS = 6
     RANDOM = 7
-
+    NONE = 8
 
 
 def simulate_SIS(
@@ -132,7 +132,7 @@ def simulate_SIS(
                 idx = int(g.vertex_index[v])
                 metric_values[v] = tr_betweenness_dict.get(idx, 0.0)
         case _:
-            metric_values = {}
+            metric_values = None
 
     if metric_values:
         num_to_vaccinate = int(len(active_vertices) * vaccine_fraction)
@@ -323,7 +323,7 @@ def main():
     OPTIONS = {
         "max_steps":            1000,
         "start":                1000,
-        "vaccine_strategy":     VaccinationStrategy.RANDOM,
+        "vaccine_strategy":     VaccinationStrategy.NONE,
         "vaccine_fraction":     0.1,
         "immunity_decay_rate":  0.998,
         "use_natural_immunity": False       # the natural immunity case, sets immunity to 1 if infected
