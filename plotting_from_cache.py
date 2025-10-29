@@ -17,7 +17,8 @@ OPTIONS = {
     "start":                1000,
     "vaccine_strategy":     VaccinationStrategy.DEGREE,
     "vaccine_fraction":     0.1,
-    "immunity_decay_rate":  0.990
+    "immunity_decay_rate":  0.990,
+    "use_natural_immunity": False       # the natural immunity case, sets immunity to 1 if infected
 }
 EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items())
 
