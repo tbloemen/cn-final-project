@@ -105,6 +105,16 @@ def simulate_SIS(
             metric_values = {v: betweenness[v] for v in g.vertices()}
         case VaccinationStrategy.LEVERAGE:
             metric_values = {v: leverage[v] for v in g.vertices()}
+        case VaccinationStrategy.WTS:
+            wt = gt.load_graph("node_rankings_time_weighted_activation.gt")
+            # Now build your metric_values dict using vertex indices
+            # metric_values = {v: vprop_act[v] for v in g.vertices()}
+            # node activation with different decay rates
+            # decay rates saved = [0.999, 0,995, 0.99, 0.895, 0.89]
+            # get with weighted_activation_node_i
+            vprop_act = wt.vertex_properties[f"weighted_activation_node_4"]
+
+            metric_values = {v: vprop_act[v] for v in g.vertices()}
         case _:
             metric_values = {}
 
