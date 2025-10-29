@@ -30,6 +30,7 @@ class VaccinationStrategy(Enum):
     BETWEENNESS = 4
     BETWEENNESS_TIME = 5
     WTS = 6
+    RANDOM = 7
 
 
 def simulate_SIS(
@@ -110,6 +111,18 @@ def simulate_SIS(
             metric_values = {v: betweenness[v] for v in g.vertices()}
         case VaccinationStrategy.LEVERAGE:
             metric_values = {v: leverage[v] for v in g.vertices()}
+        case VaccinationStrategy.WTS:
+            wt = gt.load_graph("node_rankings_time_weighted_activation.gt")
+            # Now build your metric_values dict using vertex indices
+            # metric_values = {v: vprop_act[v] for v in g.vertices()}
+            # node activation with different decay rates
+            # decay rates saved = [0.999, 0,995, 0.99, 0.895, 0.89]
+            # get with weighted_activation_node_i
+            vprop_act = wt.vertex_properties[f"weighted_activation_node_4"]
+
+            metric_values = {v: vprop_act[v] for v in g.vertices()}
+        case VaccinationStrategy.RANDOM:
+            metric_values = {v: random.uniform(0, 1.0) for v in g.vertices()}
         case _:
             metric_values = {}
 
@@ -302,9 +315,9 @@ def main():
     OPTIONS = {
         "max_steps":            1000,
         "start":                1000,
-        "vaccine_strategy":     VaccinationStrategy.DEGREE,
+        "vaccine_strategy":     VaccinationStrategy.RANDOM,
         "vaccine_fraction":     0.1,
-        "immunity_decay_rate":  0.990,
+        "immunity_decay_rate":  0.998,
         "use_natural_immunity": False       # the natural immunity case, sets immunity to 1 if infected
     }
     EXPERIMENT_NAME: str = "sis_sim_" + ','.join(f'{k}={v}' for k,v in OPTIONS.items())
@@ -336,7 +349,7 @@ def main():
     plt.legend()
     plt.xlabel("Time")
     plt.ylabel("Cumulative infected")
-    plt.title("Cumulative Infected over Time")
+    plt.title("Cumulative Infected over Time, with Random Vaccination Strategy")
     plt.savefig(f"plots/cummulative_infected_sis_sim_{EXPERIMENT_NAME}.png")
     # plt.show()
 
