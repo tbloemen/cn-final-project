@@ -13,9 +13,26 @@ def binned_mean_plot(df, x_col, y_col="cumulative_infected", bin_size=None, titl
     data = df[[x_col, y_col]].dropna()
 
     xmin, xmax = data[x_col].min(), data[x_col].max()
-    start = np.floor(xmin / bin_size) * bin_size
-    stop = np.ceil(xmax / bin_size) * bin_size + bin_size
-    bins = np.arange(start, stop, bin_size)
+    if xmin <= 0:
+        # Avoid issues with log(0)
+        xmin = data.loc[data[x_col] > 0, x_col].min()
+    if plot_log_log:
+        # Define the number of bins based on bin_size (interpreted as a multiplicative factor)
+        if bin_size is None:
+            num_bins = 50  # fallback default
+        else:
+            # bin_size acts as an approximate ratio between consecutive bins
+            num_bins = int(np.log(xmax / xmin) / np.log(1 + bin_size))
+            num_bins = max(5, num_bins)  # prevent too few bins
+
+        bins = np.logspace(np.log10(xmin), np.log10(xmax), num_bins)
+    else:
+        # Linear binning as before
+        if bin_size is None:
+            bin_size = (xmax - xmin) / 50
+        start = np.floor(xmin / bin_size) * bin_size
+        stop = np.ceil(xmax / bin_size) * bin_size + bin_size
+        bins = np.arange(start, stop, bin_size)
 
     cut = pd.cut(data[x_col], bins=bins, include_lowest=True)
     grp = data.groupby(cut, observed=True)[y_col].agg(['mean', 'std', 'count'])
@@ -64,25 +81,22 @@ def plot_infections_vs_metric(df):
     # 1) Degree (exact-by-degree or with bin_size=1)
 
     binned_mean_plot(df, 'degree',
-        bin_size=1,
         title='Average cumulative infections vs Degree', plot_log_log=True, reverse_x_axis=True)
 
     # 2) Leverage (choose a bin size, e.g. 0.05)
     binned_mean_plot(df, 'leverage',
-        bin_size=0.05,
         title='Average cumulative infections vs Leverage')
 
     # 3) Betweenness (often skewed; pick a sensible bin size, or define custom bins)
 
     binned_mean_plot(df, 'betweenness',
-        bin_size=0.0003,
         title='Average cumulative infections vs Betweenness', plot_log_log=True, reverse_x_axis=True)
 
-    binned_mean_plot(df, "strength", bin_size=0.05, title="Average cumulative infections vs Strength", plot_log_log=True, reverse_x_axis=True)
+    binned_mean_plot(df, "strength", title="Average cumulative infections vs Strength", plot_log_log=True, reverse_x_axis=True)
 
-    binned_mean_plot(df, "betweenness_time", bin_size=0.0003, title="Average cumulative infections vs Betweenness time", plot_log_log=True, reverse_x_axis=True)
+    binned_mean_plot(df, "betweenness_time", title="Average cumulative infections vs Betweenness time", plot_log_log=True, reverse_x_axis=True)
 
-    binned_mean_plot(df, "wts", bin_size=0.03, title="Average cumulative infections vs Weighted activation", plot_log_log=True, reverse_x_axis=True)
+    binned_mean_plot(df, "wts", title="Average cumulative infections vs Weighted activation", plot_log_log=True, reverse_x_axis=True)
 
 def main():
     EXPERIMENT_NAME = "sis_sim_max_steps=1000,start=1000,vaccine_strategy=VaccinationStrategy.NONE,vaccine_fraction=0.1,immunity_decay_rate=0.998,use_natural_immunity=False"
