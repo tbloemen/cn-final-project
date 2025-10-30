@@ -29,13 +29,16 @@ def binned_mean_plot(df, x_col, y_col="cumulative_infected", bin_size=None, titl
     else:
         # Linear binning as before
         if bin_size is None:
-            bin_size = (xmax - xmin) / 50
+            bin_size = (xmax - xmin) / 30
         start = np.floor(xmin / bin_size) * bin_size
         stop = np.ceil(xmax / bin_size) * bin_size + bin_size
         bins = np.arange(start, stop, bin_size)
 
     cut = pd.cut(data[x_col], bins=bins, include_lowest=True)
     grp = data.groupby(cut, observed=True)[y_col].agg(['mean', 'std', 'count'])
+
+    # Drop empty bins
+    grp = grp[grp['count'] > 0]
 
     centers = np.array([iv.left + (iv.right - iv.left) / 2 for iv in grp.index])
     mean_vals = grp['mean'].to_numpy()
@@ -45,7 +48,7 @@ def binned_mean_plot(df, x_col, y_col="cumulative_infected", bin_size=None, titl
         'center': centers,
         'mean': mean_vals,
         'std': std_vals,
-    }).dropna(subset=['mean'])
+    })
 
     # --- Plot ---
     plt.figure(figsize=(10, 6))
@@ -96,7 +99,7 @@ def plot_infections_vs_metric(df):
 
     binned_mean_plot(df, "betweenness_time", title="Average cumulative infections vs Betweenness time", plot_log_log=True, reverse_x_axis=True)
 
-    binned_mean_plot(df, "wts", title="Average cumulative infections vs Weighted activation", plot_log_log=True, reverse_x_axis=True)
+    binned_mean_plot(df, "wts", title="Average cumulative infections vs Weighted activation")
 
 def main():
     EXPERIMENT_NAME = "sis_sim_max_steps=1000,start=1000,vaccine_strategy=VaccinationStrategy.NONE,vaccine_fraction=0.1,immunity_decay_rate=0.998,use_natural_immunity=False"
